@@ -10,7 +10,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { PaymentMethodsService } from './payment-methods.service';
 import { CreatePaymentMethodDto } from './dtos/create-payment-method.dto';
 import { UpdatePaymentMethodDto } from './dtos/update-payment-method.dto';
 import { JwtGuard } from '../auth/jwt.guard';
@@ -23,6 +22,7 @@ import {
   UpdatePaymentMethodDocs,
 } from '../swagger/payment-methods.swagger';
 import { PaymentMethodType } from './entities/payment-method.entity';
+import { PaymentMethodsService } from './payment-methods.service';
 
 @ApiTags('payment-methods')
 @Controller('payment-methods')

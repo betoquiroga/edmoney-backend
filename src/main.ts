@@ -9,6 +9,7 @@ import { Category } from './categories/entities/category.entity';
 import { PaymentMethod } from './payment-methods/entities/payment-method.entity';
 import { InputMethod } from './input-methods/entities/input-method.entity';
 import { Transaction } from './transactions/entities/transaction.entity';
+import { Account } from './accounts/entities/account.entity';
 
 // Load environment variables before app initialization
 dotenv.config();
@@ -39,6 +40,7 @@ async function bootstrap() {
     .addTag('payment-methods')
     .addTag('input-methods')
     .addTag('transactions')
+    .addTag('accounts')
     .addBearerAuth()
     .build();
 
@@ -50,6 +52,7 @@ async function bootstrap() {
       PaymentMethod,
       InputMethod,
       Transaction,
+      Account,
     ],
   });
   SwaggerModule.setup('api/docs', app, document);
