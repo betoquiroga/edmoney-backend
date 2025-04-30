@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module';
 import { CategoriesModule } from './categories/categories.module';
 import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
 import { InputMethodsModule } from './input-methods/input-methods.module';
+import { TransactionsModule } from './transactions/transactions.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { InputMethodsModule } from './input-methods/input-methods.module';
     CategoriesModule,
     PaymentMethodsModule,
     InputMethodsModule,
+    TransactionsModule,
     SupabaseModule,
   ],
   controllers: [AppController],
