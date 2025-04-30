@@ -6,6 +6,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+import { SubscriptionStatus } from '../subscriptions/entities/subscription.entity';
 
 export function FindAllSubscriptionsDocs() {
   return applyDecorators(
@@ -23,6 +24,33 @@ export function FindAllSubscriptionsDocs() {
           subscriptions: {
             type: 'array',
             items: { $ref: '#/components/schemas/Subscription' },
+            example: [
+              {
+                id: '550e8400-e29b-41d4-a716-446655440000',
+                user_id: '550e8400-e29b-41d4-a716-446655441111',
+                plan_id: '550e8400-e29b-41d4-a716-446655442222',
+                status: SubscriptionStatus.ACTIVE,
+                start_date: '2023-01-01T00:00:00Z',
+                end_date: '2024-01-01T00:00:00Z',
+                current_period_start: '2023-06-01T00:00:00Z',
+                current_period_end: '2023-07-01T00:00:00Z',
+                paypal_subscription_id: 'I-BW452GLLEP1G',
+                created_at: '2023-06-01T12:00:00Z',
+                updated_at: '2023-06-01T12:00:00Z',
+              },
+              {
+                id: '550e8400-e29b-41d4-a716-446655440001',
+                user_id: '550e8400-e29b-41d4-a716-446655441112',
+                plan_id: '550e8400-e29b-41d4-a716-446655442223',
+                status: SubscriptionStatus.PENDING,
+                start_date: '2023-02-01T00:00:00Z',
+                end_date: '2024-02-01T00:00:00Z',
+                current_period_start: '2023-06-01T00:00:00Z',
+                current_period_end: '2023-07-01T00:00:00Z',
+                created_at: '2023-06-01T12:00:00Z',
+                updated_at: '2023-06-01T12:00:00Z',
+              },
+            ],
           },
         },
       },
@@ -43,7 +71,22 @@ export function FindOneSubscriptionDocs() {
       description: 'Returns a single subscription by ID',
       schema: {
         properties: {
-          subscription: { $ref: '#/components/schemas/Subscription' },
+          subscription: {
+            $ref: '#/components/schemas/Subscription',
+            example: {
+              id: '550e8400-e29b-41d4-a716-446655440000',
+              user_id: '550e8400-e29b-41d4-a716-446655441111',
+              plan_id: '550e8400-e29b-41d4-a716-446655442222',
+              status: SubscriptionStatus.ACTIVE,
+              start_date: '2023-01-01T00:00:00Z',
+              end_date: '2024-01-01T00:00:00Z',
+              current_period_start: '2023-06-01T00:00:00Z',
+              current_period_end: '2023-07-01T00:00:00Z',
+              paypal_subscription_id: 'I-BW452GLLEP1G',
+              created_at: '2023-06-01T12:00:00Z',
+              updated_at: '2023-06-01T12:00:00Z',
+            },
+          },
         },
       },
     }),
@@ -66,6 +109,31 @@ export function FindUserSubscriptionsDocs() {
           subscriptions: {
             type: 'array',
             items: { $ref: '#/components/schemas/Subscription' },
+            example: [
+              {
+                id: '550e8400-e29b-41d4-a716-446655440000',
+                user_id: '550e8400-e29b-41d4-a716-446655441111',
+                plan_id: '550e8400-e29b-41d4-a716-446655442222',
+                status: SubscriptionStatus.ACTIVE,
+                start_date: '2023-01-01T00:00:00Z',
+                end_date: '2024-01-01T00:00:00Z',
+                current_period_start: '2023-06-01T00:00:00Z',
+                current_period_end: '2023-07-01T00:00:00Z',
+                paypal_subscription_id: 'I-BW452GLLEP1G',
+                created_at: '2023-06-01T12:00:00Z',
+                updated_at: '2023-06-01T12:00:00Z',
+              },
+              {
+                id: '550e8400-e29b-41d4-a716-446655440001',
+                user_id: '550e8400-e29b-41d4-a716-446655441111',
+                plan_id: '550e8400-e29b-41d4-a716-446655442223',
+                status: SubscriptionStatus.CANCELED,
+                start_date: '2022-01-01T00:00:00Z',
+                end_date: '2023-01-01T00:00:00Z',
+                created_at: '2022-01-01T12:00:00Z',
+                updated_at: '2023-01-01T12:00:00Z',
+              },
+            ],
           },
         },
       },

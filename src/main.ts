@@ -3,6 +3,8 @@ import { AppModule } from './app.module';
 import * as dotenv from 'dotenv';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { Plan } from './plans/entities/plan.entity';
+import { Subscription } from './subscriptions/entities/subscription.entity';
 
 // Load environment variables before app initialization
 dotenv.config();
@@ -32,7 +34,9 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, config, {
+    extraModels: [Plan, Subscription],
+  });
   SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3000;
