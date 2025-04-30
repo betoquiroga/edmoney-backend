@@ -6,6 +6,8 @@ import { PlansModule } from './plans/plans.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { SupabaseModule } from './database/supabase.module';
 import { UsersModule } from './users/users.module';
+import { CategoriesModule } from './categories/categories.module';
+import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
 
 @Module({
   imports: [
@@ -13,6 +15,8 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     PlansModule,
     SubscriptionsModule,
+    CategoriesModule,
+    PaymentMethodsModule,
     SupabaseModule,
   ],
   controllers: [AppController],

@@ -5,6 +5,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { Plan } from './plans/entities/plan.entity';
 import { Subscription } from './subscriptions/entities/subscription.entity';
+import { Category } from './categories/entities/category.entity';
+import { PaymentMethod } from './payment-methods/entities/payment-method.entity';
 
 // Load environment variables before app initialization
 dotenv.config();
@@ -31,11 +33,13 @@ async function bootstrap() {
     .addTag('users')
     .addTag('plans')
     .addTag('subscriptions')
+    .addTag('categories')
+    .addTag('payment-methods')
     .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config, {
-    extraModels: [Plan, Subscription],
+    extraModels: [Plan, Subscription, Category, PaymentMethod],
   });
   SwaggerModule.setup('api/docs', app, document);
 
