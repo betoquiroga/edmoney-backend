@@ -74,6 +74,8 @@ export class UsersService {
       email: createUserDto.email,
       name: createUserDto.name,
       avatar: createUserDto.avatar,
+      created_at: new Date(),
+      updated_at: new Date(),
     };
 
     const { data, error } = await this.supabaseService
