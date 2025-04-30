@@ -28,6 +28,7 @@ async function bootstrap() {
     .addTag('auth')
     .addTag('users')
     .addTag('plans')
+    .addTag('subscriptions')
     .addBearerAuth()
     .build();
 
