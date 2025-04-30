@@ -1,4 +1,7 @@
-import { Transaction, TransactionType } from '../entities/transaction.entity';
+import {
+  Transaction,
+  TransactionType,
+} from 'src/transactions/entities/transaction.entity';
 
 export const TRANSACTION_EXAMPLE: Transaction = {
   id: '550e8400-e29b-41d4-a716-446655440000',
