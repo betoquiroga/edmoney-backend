@@ -7,6 +7,7 @@ import { Plan } from './plans/entities/plan.entity';
 import { Subscription } from './subscriptions/entities/subscription.entity';
 import { Category } from './categories/entities/category.entity';
 import { PaymentMethod } from './payment-methods/entities/payment-method.entity';
+import { InputMethod } from './input-methods/entities/input-method.entity';
 
 // Load environment variables before app initialization
 dotenv.config();
@@ -35,11 +36,12 @@ async function bootstrap() {
     .addTag('subscriptions')
     .addTag('categories')
     .addTag('payment-methods')
+    .addTag('input-methods')
     .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config, {
-    extraModels: [Plan, Subscription, Category, PaymentMethod],
+    extraModels: [Plan, Subscription, Category, PaymentMethod, InputMethod],
   });
   SwaggerModule.setup('api/docs', app, document);
 
