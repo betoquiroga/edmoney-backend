@@ -15,6 +15,9 @@ import { CreateTransactionDto } from './dtos/create-transaction.dto';
 import { UpdateTransactionDto } from './dtos/update-transaction.dto';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Transaction } from './entities/transaction.entity';
+import { QueryTransactionsDto } from './dtos/query-transactions.dto';
+import { PaginatedTransactions } from './entities/paginated-transactions.entity';
+import { TotalsByPeriodDto } from './dtos/totals-by-period.dto';
 
 @ApiTags('transactions')
 @Controller('transactions')
@@ -45,6 +48,61 @@ export class TransactionsController {
   })
   findAll(@Query('userId') userId: string) {
     return this.transactionsService.findAll(userId);
+  }
+
+  @Get('query')
+  @ApiOperation({ summary: 'Query transactions with filters' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Transactions retrieved successfully',
+    type: PaginatedTransactions,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input data',
+  })
+  queryTransactions(@Query() queryParams: QueryTransactionsDto) {
+    return this.transactionsService.queryTransactions(queryParams);
+  }
+
+  @Get('totals-by-period')
+  @ApiOperation({ summary: 'Get transaction totals by period' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Totals calculated successfully',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          total: { type: 'number' },
+          currency: { type: 'string' },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input data',
+  })
+  getTotalsByPeriod(@Query() params: TotalsByPeriodDto) {
+    return this.transactionsService.getTotalsByPeriod(params);
+  }
+
+  @Get('recurring/:recurringId')
+  @ApiOperation({
+    summary: 'Get all transactions with a specific recurring ID',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Recurring transactions retrieved successfully',
+    type: [Transaction],
+  })
+  findByRecurringId(
+    @Param('recurringId') recurringId: string,
+    @Query('userId') userId: string,
+  ) {
+    return this.transactionsService.findByRecurringId(recurringId, userId);
   }
 
   @Get(':id')

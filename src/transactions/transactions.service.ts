@@ -66,6 +66,89 @@ export class TransactionsService {
     return data as Transaction[];
   }
 
+  // New method to query transactions with various filters
+  async queryTransactions(params: {
+    userId: string;
+    categoryId?: string;
+    paymentMethodId?: string;
+    type?: string;
+    startDate?: string;
+    endDate?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    isRecurring?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ data: Transaction[]; count: number }> {
+    const {
+      userId,
+      categoryId,
+      paymentMethodId,
+      type,
+      startDate,
+      endDate,
+      minAmount,
+      maxAmount,
+      isRecurring,
+      limit = 100,
+      offset = 0,
+    } = params;
+
+    // Start building the query
+    let query = this.supabaseService
+      .getClient()
+      .from(this.TABLE_NAME)
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId);
+
+    // Apply filters if provided
+    if (categoryId) {
+      query = query.eq('category_id', categoryId);
+    }
+
+    if (paymentMethodId) {
+      query = query.eq('payment_method_id', paymentMethodId);
+    }
+
+    if (type) {
+      query = query.eq('type', type);
+    }
+
+    if (startDate) {
+      query = query.gte('transaction_date', startDate);
+    }
+
+    if (endDate) {
+      query = query.lte('transaction_date', endDate);
+    }
+
+    if (minAmount !== undefined) {
+      query = query.gte('amount', minAmount);
+    }
+
+    if (maxAmount !== undefined) {
+      query = query.lte('amount', maxAmount);
+    }
+
+    if (isRecurring !== undefined) {
+      query = query.eq('is_recurring', isRecurring);
+    }
+
+    // Apply pagination and ordering
+    const { data, error, count } = await query
+      .order('transaction_date', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      throw new Error(`Failed to fetch transactions: ${error.message}`);
+    }
+
+    return {
+      data: data as Transaction[],
+      count: count || 0,
+    };
+  }
+
   async findOne(id: string, userId: string): Promise<Transaction> {
     const { data, error } = await this.supabaseService
       .getClient()
@@ -127,5 +210,60 @@ export class TransactionsService {
     if (error) {
       throw new Error(`Failed to delete transaction: ${error.message}`);
     }
+  }
+
+  async findByRecurringId(
+    recurringId: string,
+    userId: string,
+  ): Promise<Transaction[]> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(this.TABLE_NAME)
+      .select('*')
+      .eq('recurring_id', recurringId)
+      .eq('user_id', userId)
+      .order('transaction_date', { ascending: false });
+
+    if (error) {
+      throw new Error(
+        `Failed to fetch recurring transactions: ${error.message}`,
+      );
+    }
+
+    return data as Transaction[];
+  }
+
+  async getTotalsByPeriod(params: {
+    userId: string;
+    type?: string;
+    startDate: string;
+    endDate: string;
+  }): Promise<{ total: number; currency: string }[]> {
+    const { userId, type, startDate, endDate } = params;
+
+    // Using SQL directly for aggregation operation that might not be well supported by the Supabase builder
+    let query = `
+      SELECT currency, SUM(amount) as total
+      FROM ${this.TABLE_NAME}
+      WHERE user_id = '${userId}'
+        AND transaction_date >= '${startDate}'
+        AND transaction_date <= '${endDate}'
+    `;
+
+    if (type) {
+      query += ` AND type = '${type}'`;
+    }
+
+    query += ` GROUP BY currency`;
+
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .rpc('execute_sql', { sql_query: query });
+
+    if (error) {
+      throw new Error(`Failed to calculate totals: ${error.message}`);
+    }
+
+    return data as { total: number; currency: string }[];
   }
 }
