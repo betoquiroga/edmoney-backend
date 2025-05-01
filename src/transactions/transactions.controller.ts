@@ -18,6 +18,7 @@ import { Transaction } from './entities/transaction.entity';
 import { QueryTransactionsDto } from './dtos/query-transactions.dto';
 import { PaginatedTransactions } from './entities/paginated-transactions.entity';
 import { TotalsByPeriodDto } from './dtos/totals-by-period.dto';
+import { RequiredParamPipe } from '../helpers/pipes/required-param.pipe';
 
 @ApiTags('transactions')
 @Controller('transactions')
@@ -46,7 +47,11 @@ export class TransactionsController {
     description: 'Transactions retrieved successfully',
     type: [Transaction],
   })
-  findAll(@Query('userId') userId: string) {
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Missing required userId parameter',
+  })
+  findAll(@Query('userId', new RequiredParamPipe()) userId: string) {
     return this.transactionsService.findAll(userId);
   }
 
@@ -98,9 +103,13 @@ export class TransactionsController {
     description: 'Recurring transactions retrieved successfully',
     type: [Transaction],
   })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Missing required userId parameter',
+  })
   findByRecurringId(
     @Param('recurringId') recurringId: string,
-    @Query('userId') userId: string,
+    @Query('userId', new RequiredParamPipe()) userId: string,
   ) {
     return this.transactionsService.findByRecurringId(recurringId, userId);
   }
@@ -116,7 +125,14 @@ export class TransactionsController {
     status: HttpStatus.NOT_FOUND,
     description: 'Transaction not found',
   })
-  findOne(@Param('id') id: string, @Query('userId') userId: string) {
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Missing required userId parameter',
+  })
+  findOne(
+    @Param('id') id: string,
+    @Query('userId', new RequiredParamPipe()) userId: string,
+  ) {
     return this.transactionsService.findOne(id, userId);
   }
 
@@ -156,7 +172,14 @@ export class TransactionsController {
     status: HttpStatus.NOT_FOUND,
     description: 'Transaction not found',
   })
-  remove(@Param('id') id: string, @Query('userId') userId: string) {
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Missing required userId parameter',
+  })
+  remove(
+    @Param('id') id: string,
+    @Query('userId', new RequiredParamPipe()) userId: string,
+  ) {
     return this.transactionsService.remove(id, userId);
   }
 }

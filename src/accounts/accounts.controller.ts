@@ -18,6 +18,7 @@ import {
   ACCOUNT_RESPONSE_EXAMPLE,
   ACCOUNTS_LIST_RESPONSE_EXAMPLE,
 } from './swagger/account-examples.swagger';
+import { RequiredParamPipe } from '../helpers/pipes/required-param.pipe';
 
 @ApiTags('accounts')
 @Controller('accounts')
@@ -56,7 +57,11 @@ export class AccountsController {
       example: ACCOUNTS_LIST_RESPONSE_EXAMPLE,
     },
   })
-  findAll(@Query('userId') userId: string) {
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Missing required userId parameter',
+  })
+  findAll(@Query('userId', new RequiredParamPipe()) userId: string) {
     return this.accountsService.findAll(userId);
   }
 
@@ -74,7 +79,14 @@ export class AccountsController {
     status: HttpStatus.NOT_FOUND,
     description: 'Account not found',
   })
-  findOne(@Param('id') id: string, @Query('userId') userId: string) {
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Missing required userId parameter',
+  })
+  findOne(
+    @Param('id') id: string,
+    @Query('userId', new RequiredParamPipe()) userId: string,
+  ) {
     return this.accountsService.findOne(id, userId);
   }
 
@@ -114,7 +126,14 @@ export class AccountsController {
     status: HttpStatus.NOT_FOUND,
     description: 'Account not found',
   })
-  remove(@Param('id') id: string, @Query('userId') userId: string) {
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Missing required userId parameter',
+  })
+  remove(
+    @Param('id') id: string,
+    @Query('userId', new RequiredParamPipe()) userId: string,
+  ) {
     return this.accountsService.remove(id, userId);
   }
 }
