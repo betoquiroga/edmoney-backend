@@ -10,7 +10,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dtos/create-category.dto';
 import { UpdateCategoryDto } from './dtos/update-category.dto';
 import { JwtGuard } from '../auth/jwt.guard';
@@ -23,6 +22,8 @@ import {
   UpdateCategoryDocs,
 } from '../swagger/categories.swagger';
 import { TransactionType } from './entities/category.entity';
+import { RequiredParamPipe } from '../helpers/pipes/required-param.pipe';
+import { CategoriesService } from './categories.service';
 
 @ApiTags('categories')
 @Controller('categories')
@@ -54,7 +55,7 @@ export class CategoriesController {
   @FindUserCategoriesDocs()
   @Get('user/:userId')
   async findByUser(
-    @Param('userId') userId: string,
+    @Param('userId', new RequiredParamPipe()) userId: string,
     @Query('type') type?: TransactionType,
   ) {
     const categories = await this.categoriesService.findByUser(userId, type);

@@ -23,6 +23,7 @@ import {
 } from '../swagger/payment-methods.swagger';
 import { PaymentMethodType } from './entities/payment-method.entity';
 import { PaymentMethodsService } from './payment-methods.service';
+import { RequiredParamPipe } from '../helpers/pipes/required-param.pipe';
 
 @ApiTags('payment-methods')
 @Controller('payment-methods')
@@ -54,7 +55,7 @@ export class PaymentMethodsController {
   @FindUserPaymentMethodsDocs()
   @Get('user/:userId')
   async findByUser(
-    @Param('userId') userId: string,
+    @Param('userId', new RequiredParamPipe()) userId: string,
     @Query('type') type?: PaymentMethodType,
   ) {
     const paymentMethods = await this.paymentMethodsService.findByUser(

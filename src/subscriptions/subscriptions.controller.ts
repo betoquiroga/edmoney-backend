@@ -27,6 +27,7 @@ import {
   ISubscriptionsResponse,
 } from './interfaces/subscription.interface';
 import { SubscriptionsService } from './subscriptions.service';
+import { RequiredParamPipe } from '../helpers/pipes/required-param.pipe';
 
 @ApiTags('subscriptions')
 @Controller('subscriptions')
@@ -45,7 +46,9 @@ export class SubscriptionsController {
 
   @Get(':id')
   @FindOneSubscriptionDocs()
-  async findOne(@Param('id') id: string): Promise<ISubscriptionResponse> {
+  async findOne(
+    @Param('id', new RequiredParamPipe()) id: string,
+  ): Promise<ISubscriptionResponse> {
     const subscription = await this.subscriptionsService.findById(id);
     return { subscription };
   }
@@ -53,7 +56,7 @@ export class SubscriptionsController {
   @Get('user/:userId')
   @FindUserSubscriptionsDocs()
   async findByUser(
-    @Param('userId') userId: string,
+    @Param('userId', new RequiredParamPipe()) userId: string,
   ): Promise<ISubscriptionsResponse> {
     const subscriptions = await this.subscriptionsService.findByUserId(userId);
     return { subscriptions };
@@ -73,7 +76,7 @@ export class SubscriptionsController {
   @Patch(':id')
   @UpdateSubscriptionDocs()
   async update(
-    @Param('id') id: string,
+    @Param('id', new RequiredParamPipe()) id: string,
     @Body() updateSubscriptionDto: UpdateSubscriptionDto,
   ): Promise<ISubscriptionResponse> {
     const subscription = await this.subscriptionsService.update(
@@ -85,14 +88,18 @@ export class SubscriptionsController {
 
   @Patch(':id/cancel')
   @CancelSubscriptionDocs()
-  async cancel(@Param('id') id: string): Promise<ISubscriptionResponse> {
+  async cancel(
+    @Param('id', new RequiredParamPipe()) id: string,
+  ): Promise<ISubscriptionResponse> {
     const subscription = await this.subscriptionsService.cancel(id);
     return { subscription, message: 'Subscription canceled successfully' };
   }
 
   @Delete(':id')
   @DeleteSubscriptionDocs()
-  async remove(@Param('id') id: string): Promise<{ message: string }> {
+  async remove(
+    @Param('id', new RequiredParamPipe()) id: string,
+  ): Promise<{ message: string }> {
     await this.subscriptionsService.remove(id);
     return { message: 'Subscription deleted successfully' };
   }
