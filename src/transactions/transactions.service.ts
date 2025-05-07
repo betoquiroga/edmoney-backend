@@ -279,4 +279,69 @@ export class TransactionsService {
 
     return data as { total: number; currency: string }[];
   }
+
+  /**
+   * Devuelve el resumen financiero del usuario: saldo, ingresos y egresos totales
+   */
+  async getSummary(userId: string): Promise<{
+    balance: number;
+    totalIncome: number;
+    totalExpense: number;
+    currency: string;
+  }> {
+    // Obtener ingresos
+    const { data: incomeData, error: incomeError } = await this.supabaseService
+      .getClient()
+      .from(this.TABLE_NAME)
+      .select('amount, currency')
+      .eq('user_id', userId)
+      .eq('type', 'income');
+
+    if (incomeError) {
+      throw new Error(`Failed to fetch income: ${incomeError.message}`);
+    }
+
+    // Obtener egresos
+    const { data: expenseData, error: expenseError } =
+      await this.supabaseService
+        .getClient()
+        .from(this.TABLE_NAME)
+        .select('amount, currency')
+        .eq('user_id', userId)
+        .eq('type', 'expense');
+
+    if (expenseError) {
+      throw new Error(`Failed to fetch expenses: ${expenseError.message}`);
+    }
+
+    // Suponemos una sola moneda (la primera encontrada)
+    const currency =
+      incomeData?.[0]?.currency || expenseData?.[0]?.currency || 'USD';
+    const totalIncome =
+      incomeData?.reduce((acc, t) => acc + Number(t.amount), 0) || 0;
+    const totalExpense =
+      expenseData?.reduce((acc, t) => acc + Number(t.amount), 0) || 0;
+    const balance = totalIncome - totalExpense;
+
+    return { balance, totalIncome, totalExpense, currency };
+  }
+
+  /**
+   * Devuelve las últimas 10 transacciones de un usuario
+   */
+  async getRecentTransactions(userId: string): Promise<Transaction[]> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from(this.TABLE_NAME)
+      .select('*')
+      .eq('user_id', userId)
+      .order('transaction_date', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      throw new Error(`Failed to fetch recent transactions: ${error.message}`);
+    }
+
+    return data as Transaction[];
+  }
 }

@@ -94,6 +94,52 @@ export class TransactionsController {
     return this.transactionsService.getTotalsByPeriod(params);
   }
 
+  /**
+   * GET /transactions/summary?userId=xxx
+   * Devuelve el resumen financiero del usuario
+   */
+  @Get('summary')
+  @ApiOperation({ summary: 'Get financial summary for a user' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Summary retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        balance: { type: 'number' },
+        totalIncome: { type: 'number' },
+        totalExpense: { type: 'number' },
+        currency: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Missing required userId parameter',
+  })
+  getSummary(@Query('userId', new RequiredParamPipe()) userId: string) {
+    return this.transactionsService.getSummary(userId);
+  }
+
+  /**
+   * GET /transactions/recent?userId=xxx
+   * Devuelve las últimas 10 transacciones del usuario
+   */
+  @Get('recent')
+  @ApiOperation({ summary: 'Get recent transactions for a user' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Recent transactions retrieved successfully',
+    type: [Transaction],
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Missing required userId parameter',
+  })
+  getRecent(@Query('userId', new RequiredParamPipe()) userId: string) {
+    return this.transactionsService.getRecentTransactions(userId);
+  }
+
   @Get('recurring/:recurringId')
   @ApiOperation({
     summary: 'Get all transactions with a specific recurring ID',

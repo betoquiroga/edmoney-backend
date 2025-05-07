@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { JwtGuard } from 'src/auth/jwt.guard';
@@ -30,6 +31,12 @@ export class UsersController {
   async findAll(): Promise<IUsersResponse> {
     const users = await this.usersService.findAll();
     return { users };
+  }
+
+  @Get('me')
+  @UseGuards(JwtGuard)
+  async getMe(@Request() req): Promise<IUserResponse> {
+    return { user: req.user };
   }
 
   @Get(':id')
