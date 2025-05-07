@@ -133,4 +133,11 @@ export class Transaction {
     example: '2023-06-01T12:00:00Z',
   })
   updated_at: Date;
+
+  @ApiProperty({
+    description: 'Category name (populated from category_id)',
+    example: 'Groceries',
+    required: false,
+  })
+  category_name?: string;
 }

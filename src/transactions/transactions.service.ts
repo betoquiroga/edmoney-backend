@@ -4,12 +4,16 @@ import { CreateTransactionDto } from './dtos/create-transaction.dto';
 import { UpdateTransactionDto } from './dtos/update-transaction.dto';
 import { SupabaseService } from '../database/supabase.service';
 import { v4 as uuidv4 } from 'uuid';
+import { CategoriesService } from '../categories/categories.service';
 
 @Injectable()
 export class TransactionsService {
   private readonly TABLE_NAME = 'transactions';
 
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly categoriesService: CategoriesService,
+  ) {}
 
   async create(
     createTransactionDto: CreateTransactionDto,
@@ -327,13 +331,95 @@ export class TransactionsService {
   }
 
   /**
+   * Procesa las transacciones para añadir nombres de categoría basados en IDs
+   */
+  private async addCategoryNames(
+    transactions: Transaction[],
+  ): Promise<Transaction[]> {
+    console.log(
+      'Categorías de transacciones:',
+      transactions.map((t) => t.category_id),
+    );
+
+    // Crear un mapa para evitar buscar la misma categoría múltiples veces
+    const categoryCache: Record<string, string> = {};
+
+    // Procesar cada transacción en paralelo
+    const enrichedTransactions = await Promise.all(
+      transactions.map(async (transaction) => {
+        // Si no hay ID de categoría, devolvemos "Sin categoría"
+        if (!transaction.category_id) {
+          return {
+            ...transaction,
+            category_name: 'Sin categoría',
+          };
+        }
+
+        // Si ya tenemos el nombre en caché, lo reutilizamos
+        if (categoryCache[transaction.category_id]) {
+          return {
+            ...transaction,
+            category_name: categoryCache[transaction.category_id],
+          };
+        }
+
+        try {
+          // Intentamos obtener la categoría real usando el servicio
+          const category = await this.categoriesService.findOne(
+            transaction.category_id,
+          );
+
+          // Guardamos en caché
+          categoryCache[transaction.category_id] = category.name;
+
+          return {
+            ...transaction,
+            category_name: category.name,
+          };
+        } catch (error) {
+          // Si la categoría no existe, manejamos el caso de manera elegante
+          // Para IDs en formato cat-xxx, damos formato legible
+          if (transaction.category_id.startsWith('cat-')) {
+            const categorySlug = transaction.category_id.replace('cat-', '');
+            const categoryName =
+              categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1);
+            categoryCache[transaction.category_id] = categoryName;
+            return {
+              ...transaction,
+              category_name: categoryName,
+            };
+          }
+
+          // Para cualquier otro formato, usamos un nombre más descriptivo
+          const categoryName = 'Categoría desconocida';
+          categoryCache[transaction.category_id] = categoryName;
+          return {
+            ...transaction,
+            category_name: categoryName,
+          };
+        }
+      }),
+    );
+
+    return enrichedTransactions;
+  }
+
+  /**
    * Devuelve las últimas 10 transacciones de un usuario
    */
   async getRecentTransactions(userId: string): Promise<Transaction[]> {
+    // Usar un JOIN con la tabla de categorías para obtener directamente los nombres
     const { data, error } = await this.supabaseService
       .getClient()
       .from(this.TABLE_NAME)
-      .select('*')
+      .select(
+        `
+        *,
+        categories:category_id (
+          name
+        )
+      `,
+      )
       .eq('user_id', userId)
       .order('transaction_date', { ascending: false })
       .limit(10);
@@ -342,6 +428,25 @@ export class TransactionsService {
       throw new Error(`Failed to fetch recent transactions: ${error.message}`);
     }
 
-    return data as Transaction[];
+    // Reformatear la respuesta para aplanar la estructura anidada
+    return data.map((transaction: any) => {
+      return {
+        ...transaction,
+        // Si hay una categoría relacionada, usar su nombre; de lo contrario, usar un valor predeterminado
+        category_name: transaction.categories
+          ? transaction.categories.name
+          : transaction.category_id
+            ? transaction.category_id.startsWith('cat-')
+              ? transaction.category_id
+                  .replace('cat-', '')
+                  .charAt(0)
+                  .toUpperCase() +
+                transaction.category_id.replace('cat-', '').slice(1)
+              : 'Categoría desconocida'
+            : 'Sin categoría',
+        // Eliminar el objeto anidado de categorías para mantener la estructura plana
+        categories: undefined,
+      };
+    });
   }
 }
