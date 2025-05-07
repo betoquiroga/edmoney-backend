@@ -11,7 +11,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   // Configure CORS to only allow specific origins
   app.enableCors({
-    origin: ['https://edmoney-frontend.vercel.app', 'http://localhost:3000'],
+    origin: ['https://edmoney-frontend.vercel.app', 'http://localhost:3001'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     credentials: true,
   });
