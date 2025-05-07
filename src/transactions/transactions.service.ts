@@ -3,6 +3,7 @@ import { Transaction } from './entities/transaction.entity';
 import { CreateTransactionDto } from './dtos/create-transaction.dto';
 import { UpdateTransactionDto } from './dtos/update-transaction.dto';
 import { SupabaseService } from '../database/supabase.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class TransactionsService {
@@ -14,6 +15,7 @@ export class TransactionsService {
     createTransactionDto: CreateTransactionDto,
   ): Promise<Transaction> {
     const now = new Date();
+    const transactionId = uuidv4();
 
     // If is_recurring is not provided, default to false
     const isRecurring =
@@ -21,7 +23,13 @@ export class TransactionsService {
         ? createTransactionDto.is_recurring
         : false;
 
+    // Generate UUID for recurring_id if is_recurring is true and no recurring_id is provided
+    if (isRecurring && !createTransactionDto.recurring_id) {
+      createTransactionDto.recurring_id = uuidv4();
+    }
+
     const transactionData = {
+      id: transactionId,
       user_id: createTransactionDto.user_id,
       category_id: createTransactionDto.category_id || null,
       payment_method_id: createTransactionDto.payment_method_id || null,
@@ -51,7 +59,9 @@ export class TransactionsService {
     return data as Transaction;
   }
 
-  async findAll(userId: string): Promise<Transaction[]> {
+  async findAll(
+    userId: string,
+  ): Promise<{ transactions: Transaction[]; message?: string }> {
     const { data, error } = await this.supabaseService
       .getClient()
       .from(this.TABLE_NAME)
@@ -63,7 +73,10 @@ export class TransactionsService {
       throw new Error(`Failed to fetch transactions: ${error.message}`);
     }
 
-    return data as Transaction[];
+    return {
+      transactions: data as Transaction[],
+      message: 'Transactions retrieved successfully',
+    };
   }
 
   // New method to query transactions with various filters
