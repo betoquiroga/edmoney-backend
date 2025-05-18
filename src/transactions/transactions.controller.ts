@@ -9,11 +9,12 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dtos/create-transaction.dto';
 import { UpdateTransactionDto } from './dtos/update-transaction.dto';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { Transaction } from './entities/transaction.entity';
 import { QueryTransactionsDto } from './dtos/query-transactions.dto';
 import { PaginatedTransactions } from './entities/paginated-transactions.entity';
@@ -227,5 +228,82 @@ export class TransactionsController {
     @Query('userId', new RequiredParamPipe()) userId: string,
   ) {
     return this.transactionsService.remove(id, userId);
+  }
+
+  /**
+   * GET /transactions/metrics?userId=xxx&period=xxx
+   * Devuelve métricas estadísticas para el dashboard
+   */
+  @Get('metrics')
+  @ApiOperation({ summary: 'Get transaction metrics for dashboard' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Metrics retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        categorySummary: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              category_id: { type: 'string' },
+              category_name: { type: 'string' },
+              total: { type: 'number' },
+              percentage: { type: 'number' },
+            },
+          },
+        },
+        monthlyTrend: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              month: { type: 'string' },
+              income: { type: 'number' },
+              expense: { type: 'number' },
+            },
+          },
+        },
+        avgTransaction: { type: 'number' },
+        totalTransactions: { type: 'number' },
+        mostActiveDay: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Missing required userId parameter',
+  })
+  getMetrics(
+    @Query('userId', new RequiredParamPipe()) userId: string,
+    @Query('period') period: string = 'month',
+  ) {
+    return this.transactionsService.getMetrics(userId, period);
+  }
+
+  @Get('metrics/:userId')
+  @ApiOperation({ summary: 'Get dashboard metrics for a user' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiQuery({
+    name: 'period',
+    required: false,
+    description: 'Period to analyze (month, quarter, year, week)',
+    enum: ['month', 'quarter', 'year', 'week'],
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Dashboard metrics retrieved successfully',
+  })
+  async getDashboardMetrics(
+    @Param('userId') userId: string,
+    @Query('period') period?: string,
+  ) {
+    try {
+      const metrics = await this.transactionsService.getMetrics(userId, period);
+      return { metrics, message: 'Dashboard metrics retrieved successfully' };
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 }
