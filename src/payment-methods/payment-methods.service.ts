@@ -5,37 +5,11 @@ import {
   PaymentMethod,
   PaymentMethodType,
 } from './entities/payment-method.entity';
+import { SupabaseService } from '../database/supabase.service';
 
 @Injectable()
 export class PaymentMethodsService {
-  // This is a placeholder service implementation
-  // In a real implementation, you would inject a database repository
-
-  private paymentMethods: PaymentMethod[] = [
-    // Sample payment methods for development
-    {
-      id: '550e8400-e29b-41d4-a716-446655440000',
-      user_id: null,
-      name: 'Cash',
-      type: PaymentMethodType.CASH,
-      icon: 'money-bill',
-      is_default: true,
-      is_active: true,
-      created_at: new Date('2023-06-01T12:00:00Z'),
-      updated_at: new Date('2023-06-01T12:00:00Z'),
-    },
-    {
-      id: '550e8400-e29b-41d4-a716-446655440001',
-      user_id: '550e8400-e29b-41d4-a716-446655441111',
-      name: 'My Visa Credit Card',
-      type: PaymentMethodType.CREDIT_CARD,
-      icon: 'credit-card',
-      is_default: false,
-      is_active: true,
-      created_at: new Date('2023-06-01T12:00:00Z'),
-      updated_at: new Date('2023-06-01T12:00:00Z'),
-    },
-  ];
+  constructor(private readonly supabaseService: SupabaseService) {}
 
   async findAll({
     userId,
@@ -46,107 +20,144 @@ export class PaymentMethodsService {
     type?: PaymentMethodType;
     isDefault?: boolean;
   }) {
-    let filteredMethods = [...this.paymentMethods];
+    try {
+      const supabase = this.supabaseService.getClient();
+      let query = supabase.from('payment_methods').select('*');
+      
+      // Aplicar filtros si existen
+      if (userId) {
+        // Buscar métodos de pago del usuario o los métodos por defecto (user_id es null)
+        query = query.or(`user_id.eq.${userId},user_id.is.null`);
+      }
+      
+      if (type) {
+        query = query.eq('type', type);
+      }
+      
+      if (isDefault !== undefined) {
+        query = query.eq('is_default', isDefault);
+      }
 
-    if (userId) {
-      filteredMethods = filteredMethods.filter(
-        (method) => method.user_id === userId || method.user_id === null,
-      );
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error al buscar métodos de pago:', error);
+        return []; // Devolver array vacío en caso de error
+      }
+      
+      return data as PaymentMethod[];
+    } catch (error) {
+      console.error('Error inesperado al buscar métodos de pago:', error);
+      return []; // Devolver array vacío en caso de error
     }
-
-    if (type) {
-      filteredMethods = filteredMethods.filter(
-        (method) => method.type === type,
-      );
-    }
-
-    if (isDefault !== undefined) {
-      filteredMethods = filteredMethods.filter(
-        (method) => method.is_default === isDefault,
-      );
-    }
-
-    return filteredMethods;
   }
 
   async findOne(id: string) {
-    const paymentMethod = this.paymentMethods.find(
-      (method) => method.id === id,
-    );
-    if (!paymentMethod) {
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .select('*')
+      .eq('id', id)
+      .single();
+      
+    if (error || !data) {
       throw new NotFoundException(`Payment method with ID ${id} not found`);
     }
-    return paymentMethod;
+    
+    return data as PaymentMethod;
   }
 
   async findByUser(userId: string, type?: PaymentMethodType) {
-    // Get both user-specific payment methods and default payment methods
-    let methods = this.paymentMethods.filter(
-      (method) => method.user_id === userId || method.user_id === null,
-    );
+    try {
+      const supabase = this.supabaseService.getClient();
+      let query = supabase.from('payment_methods').select('*');
+      
+      // Buscar métodos de pago del usuario o los métodos por defecto (user_id es null)
+      query = query.or(`user_id.eq.${userId},user_id.is.null`);
+      
+      if (type) {
+        query = query.eq('type', type);
+      }
 
-    if (type) {
-      methods = methods.filter((method) => method.type === type);
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error al buscar métodos de pago del usuario:', error);
+        return []; // Devolver array vacío en caso de error
+      }
+      
+      return data as PaymentMethod[];
+    } catch (error) {
+      console.error('Error inesperado al buscar métodos de pago del usuario:', error);
+      return []; // Devolver array vacío en caso de error
     }
-
-    return methods;
   }
 
   async create(createPaymentMethodDto: CreatePaymentMethodDto) {
-    const newPaymentMethod: PaymentMethod = {
-      id: this.generateId(),
+    const supabase = this.supabaseService.getClient();
+    
+    const newPaymentMethod = {
       ...createPaymentMethodDto,
       is_default: createPaymentMethodDto.is_default ?? false,
       is_active: createPaymentMethodDto.is_active ?? true,
-      created_at: new Date(),
-      updated_at: new Date(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
-
-    this.paymentMethods.push(newPaymentMethod);
-    return newPaymentMethod;
+    
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .insert(newPaymentMethod)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error al crear método de pago:', error);
+      throw new Error(`Error creating payment method: ${error.message}`);
+    }
+    
+    return data as PaymentMethod;
   }
 
   async update(id: string, updatePaymentMethodDto: UpdatePaymentMethodDto) {
-    const index = this.paymentMethods.findIndex((method) => method.id === id);
-    if (index === -1) {
-      throw new NotFoundException(`Payment method with ID ${id} not found`);
-    }
-
-    // Don't allow modifying default payment methods for non-admins
-    if (this.paymentMethods[index].is_default === true) {
-      // In a real implementation, you would check if the user is an admin
-      // For now, we'll allow the update in this mock service
-    }
-
-    const updatedPaymentMethod = {
-      ...this.paymentMethods[index],
+    // Primero verificar si el método de pago existe
+    await this.findOne(id);
+    
+    const supabase = this.supabaseService.getClient();
+    
+    const updateData = {
       ...updatePaymentMethodDto,
-      updated_at: new Date(),
+      updated_at: new Date().toISOString(),
     };
-
-    this.paymentMethods[index] = updatedPaymentMethod;
-    return updatedPaymentMethod;
+    
+    const { data, error } = await supabase
+      .from('payment_methods')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error al actualizar método de pago:', error);
+      throw new Error(`Error updating payment method: ${error.message}`);
+    }
+    
+    return data as PaymentMethod;
   }
 
   async remove(id: string) {
-    const index = this.paymentMethods.findIndex((method) => method.id === id);
-    if (index === -1) {
-      throw new NotFoundException(`Payment method with ID ${id} not found`);
+    // Primero verificar si el método de pago existe
+    await this.findOne(id);
+    
+    const supabase = this.supabaseService.getClient();
+    
+    const { error } = await supabase
+      .from('payment_methods')
+      .delete()
+      .eq('id', id);
+      
+    if (error) {
+      console.error('Error al eliminar método de pago:', error);
+      throw new Error(`Error deleting payment method: ${error.message}`);
     }
-
-    // Don't allow deleting default payment methods for non-admins
-    if (this.paymentMethods[index].is_default === true) {
-      // In a real implementation, you would check if the user is an admin
-      // For now, we'll allow the deletion in this mock service
-    }
-
-    this.paymentMethods.splice(index, 1);
-  }
-
-  private generateId(): string {
-    // Simple mock UUID generator
-    return 'xxxx-xxxx-xxxx-xxxx'.replace(/[x]/g, () => {
-      return Math.floor(Math.random() * 16).toString(16);
-    });
   }
 }

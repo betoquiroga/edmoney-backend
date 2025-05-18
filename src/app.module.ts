@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+// Comentar o eliminar las importaciones que no existen
+// import { AppController } from './app.controller';
+// import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { PlansModule } from './plans/plans.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
@@ -11,6 +12,7 @@ import { PaymentMethodsModule } from './payment-methods/payment-methods.module';
 import { InputMethodsModule } from './input-methods/input-methods.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { AccountsModule } from './accounts/accounts.module';
+import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
   imports: [
@@ -24,8 +26,9 @@ import { AccountsModule } from './accounts/accounts.module';
     TransactionsModule,
     AccountsModule,
     SupabaseModule,
+    MetricsModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}
