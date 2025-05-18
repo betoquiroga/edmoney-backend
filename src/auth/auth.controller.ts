@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { CreateUserDto } from '../users/dtos/create-user.dto';
 import { AuthService } from './auth.service';
@@ -21,5 +21,10 @@ export class AuthController {
   @LoginDocs()
   async login(@Body() loginDto: LoginDto): Promise<IAuthResponse> {
     return this.authService.login(loginDto);
+  }
+
+  @Get('test-user')
+  async createTestUser(): Promise<IAuthResponse> {
+    return this.authService.createTestUser();
   }
 }

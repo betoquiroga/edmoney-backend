@@ -2,93 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCategoryDto } from './dtos/create-category.dto';
 import { UpdateCategoryDto } from './dtos/update-category.dto';
 import { Category, TransactionType } from './entities/category.entity';
+import { SupabaseService } from '../database/supabase.service';
 
 @Injectable()
 export class CategoriesService {
-  // This is a placeholder service implementation
-  // In a real implementation, you would inject a database repository
-
-  private categories: Category[] = [
-    // Sample categories for development
-    {
-      id: '550e8400-e29b-41d4-a716-446655440000',
-      user_id: null,
-      name: 'Groceries',
-      type: TransactionType.EXPENSE,
-      icon: 'shopping-cart',
-      is_default: true,
-      is_active: true,
-      created_at: new Date('2023-06-01T12:00:00Z'),
-      updated_at: new Date('2023-06-01T12:00:00Z'),
-    },
-    {
-      id: '550e8400-e29b-41d4-a716-446655440001',
-      user_id: '550e8400-e29b-41d4-a716-446655441111',
-      name: 'My Salary',
-      type: TransactionType.INCOME,
-      icon: 'wallet',
-      is_default: false,
-      is_active: true,
-      created_at: new Date('2023-06-01T12:00:00Z'),
-      updated_at: new Date('2023-06-01T12:00:00Z'),
-    },
-    // More default categories
-    {
-      id: '550e8400-e29b-41d4-a716-446655440002',
-      user_id: null,
-      name: 'Dining Out',
-      type: TransactionType.EXPENSE,
-      icon: 'restaurant',
-      is_default: true,
-      is_active: true,
-      created_at: new Date('2023-06-01T12:00:00Z'),
-      updated_at: new Date('2023-06-01T12:00:00Z'),
-    },
-    {
-      id: '550e8400-e29b-41d4-a716-446655440003',
-      user_id: null,
-      name: 'Transportation',
-      type: TransactionType.EXPENSE,
-      icon: 'car',
-      is_default: true,
-      is_active: true,
-      created_at: new Date('2023-06-01T12:00:00Z'),
-      updated_at: new Date('2023-06-01T12:00:00Z'),
-    },
-    {
-      id: '550e8400-e29b-41d4-a716-446655440004',
-      user_id: null,
-      name: 'Entertainment',
-      type: TransactionType.EXPENSE,
-      icon: 'film',
-      is_default: true,
-      is_active: true,
-      created_at: new Date('2023-06-01T12:00:00Z'),
-      updated_at: new Date('2023-06-01T12:00:00Z'),
-    },
-    {
-      id: '550e8400-e29b-41d4-a716-446655440005',
-      user_id: null,
-      name: 'Utilities',
-      type: TransactionType.EXPENSE,
-      icon: 'lightbulb',
-      is_default: true,
-      is_active: true,
-      created_at: new Date('2023-06-01T12:00:00Z'),
-      updated_at: new Date('2023-06-01T12:00:00Z'),
-    },
-    {
-      id: '550e8400-e29b-41d4-a716-446655440006',
-      user_id: null,
-      name: 'Investments',
-      type: TransactionType.INCOME,
-      icon: 'trending-up',
-      is_default: true,
-      is_active: true,
-      created_at: new Date('2023-06-01T12:00:00Z'),
-      updated_at: new Date('2023-06-01T12:00:00Z'),
-    },
-  ];
+  constructor(private readonly supabaseService: SupabaseService) {}
 
   async findAll({
     userId,
@@ -99,105 +17,144 @@ export class CategoriesService {
     type?: TransactionType;
     isDefault?: boolean;
   }) {
-    let filteredCategories = [...this.categories];
+    try {
+      const supabase = this.supabaseService.getClient();
+      let query = supabase.from('categories').select('*');
+      
+      // Aplicar filtros si existen
+      if (userId) {
+        // Buscar categorías del usuario o las categorías por defecto (user_id es null)
+        query = query.or(`user_id.eq.${userId},user_id.is.null`);
+      }
+      
+      if (type) {
+        query = query.eq('type', type);
+      }
+      
+      if (isDefault !== undefined) {
+        query = query.eq('is_default', isDefault);
+      }
 
-    if (userId) {
-      filteredCategories = filteredCategories.filter(
-        (cat) => cat.user_id === userId || cat.user_id === null,
-      );
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error al buscar categorías:', error);
+        return []; // Devolver array vacío en caso de error
+      }
+      
+      return data as Category[];
+    } catch (error) {
+      console.error('Error inesperado al buscar categorías:', error);
+      return []; // Devolver array vacío en caso de error
     }
-
-    if (type) {
-      filteredCategories = filteredCategories.filter(
-        (cat) => cat.type === type,
-      );
-    }
-
-    if (isDefault !== undefined) {
-      filteredCategories = filteredCategories.filter(
-        (cat) => cat.is_default === isDefault,
-      );
-    }
-
-    return filteredCategories;
   }
 
   async findOne(id: string) {
-    const category = this.categories.find((cat) => cat.id === id);
-    if (!category) {
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('id', id)
+      .single();
+      
+    if (error || !data) {
       throw new NotFoundException(`Category with ID ${id} not found`);
     }
-    return category;
+    
+    return data as Category;
   }
 
   async findByUser(userId: string, type?: TransactionType) {
-    // Get both user-specific categories and default categories
-    let categories = this.categories.filter(
-      (cat) => cat.user_id === userId || cat.user_id === null,
-    );
+    try {
+      const supabase = this.supabaseService.getClient();
+      let query = supabase.from('categories').select('*');
+      
+      // Buscar categorías del usuario o las categorías por defecto (user_id es null)
+      query = query.or(`user_id.eq.${userId},user_id.is.null`);
+      
+      if (type) {
+        query = query.eq('type', type);
+      }
 
-    if (type) {
-      categories = categories.filter((cat) => cat.type === type);
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error al buscar categorías del usuario:', error);
+        return []; // Devolver array vacío en caso de error
+      }
+      
+      return data as Category[];
+    } catch (error) {
+      console.error('Error inesperado al buscar categorías del usuario:', error);
+      return []; // Devolver array vacío en caso de error
     }
-
-    return categories;
   }
 
   async create(createCategoryDto: CreateCategoryDto) {
-    const newCategory: Category = {
-      id: this.generateId(),
+    const supabase = this.supabaseService.getClient();
+    
+    const newCategory = {
       ...createCategoryDto,
       is_default: createCategoryDto.is_default ?? false,
       is_active: createCategoryDto.is_active ?? true,
-      created_at: new Date(),
-      updated_at: new Date(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
-
-    this.categories.push(newCategory);
-    return newCategory;
+    
+    const { data, error } = await supabase
+      .from('categories')
+      .insert(newCategory)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error al crear categoría:', error);
+      throw new Error(`Error creating category: ${error.message}`);
+    }
+    
+    return data as Category;
   }
 
   async update(id: string, updateCategoryDto: UpdateCategoryDto) {
-    const index = this.categories.findIndex((cat) => cat.id === id);
-    if (index === -1) {
-      throw new NotFoundException(`Category with ID ${id} not found`);
-    }
-
-    // Don't allow modifying default categories for non-admins
-    if (this.categories[index].is_default === true) {
-      // In a real implementation, you would check if the user is an admin
-      // For now, we'll allow the update in this mock service
-    }
-
-    const updatedCategory = {
-      ...this.categories[index],
+    // Primero verificar si la categoría existe
+    await this.findOne(id);
+    
+    const supabase = this.supabaseService.getClient();
+    
+    const updateData = {
       ...updateCategoryDto,
-      updated_at: new Date(),
+      updated_at: new Date().toISOString(),
     };
-
-    this.categories[index] = updatedCategory;
-    return updatedCategory;
+    
+    const { data, error } = await supabase
+      .from('categories')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('Error al actualizar categoría:', error);
+      throw new Error(`Error updating category: ${error.message}`);
+    }
+    
+    return data as Category;
   }
 
   async remove(id: string) {
-    const index = this.categories.findIndex((cat) => cat.id === id);
-    if (index === -1) {
-      throw new NotFoundException(`Category with ID ${id} not found`);
+    // Primero verificar si la categoría existe
+    await this.findOne(id);
+    
+    const supabase = this.supabaseService.getClient();
+    
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id);
+      
+    if (error) {
+      console.error('Error al eliminar categoría:', error);
+      throw new Error(`Error deleting category: ${error.message}`);
     }
-
-    // Don't allow deleting default categories for non-admins
-    if (this.categories[index].is_default === true) {
-      // In a real implementation, you would check if the user is an admin
-      // For now, we'll allow the deletion in this mock service
-    }
-
-    this.categories.splice(index, 1);
-  }
-
-  private generateId(): string {
-    // Simple mock UUID generator
-    return 'xxxx-xxxx-xxxx-xxxx'.replace(/[x]/g, () => {
-      return Math.floor(Math.random() * 16).toString(16);
-    });
   }
 }

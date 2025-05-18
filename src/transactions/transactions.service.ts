@@ -1,13 +1,37 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Transaction } from './entities/transaction.entity';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Transaction, TransactionType } from './entities/transaction.entity';
 import { CreateTransactionDto } from './dtos/create-transaction.dto';
 import { UpdateTransactionDto } from './dtos/update-transaction.dto';
 import { SupabaseService } from '../database/supabase.service';
 import { v4 as uuidv4 } from 'uuid';
 import { CategoriesService } from '../categories/categories.service';
+import { QueryTransactionsDto } from './dtos/query-transactions.dto';
+import { TotalsByPeriodDto } from './dtos/totals-by-period.dto';
+import { PaginatedTransactions } from './entities/paginated-transactions.entity';
+
+/**
+ * Resultado de métricas para el dashboard
+ */
+export interface DashboardMetrics {
+  categorySummary: {
+    category_id: string;
+    category_name: string;
+    total: number;
+    percentage: number;
+  }[];
+  monthlyTrend: {
+    month: string;
+    income: number;
+    expense: number;
+  }[];
+  avgTransaction: number;
+  totalTransactions: number;
+  mostActiveDay: string;
+}
 
 @Injectable()
 export class TransactionsService {
+  private readonly logger = new Logger(TransactionsService.name);
   private readonly TABLE_NAME = 'transactions';
 
   constructor(
@@ -448,5 +472,151 @@ export class TransactionsService {
         categories: undefined,
       };
     });
+  }
+
+  /**
+   * Get transaction metrics for dashboard
+   * @param userId User ID
+   * @param period Period to analyze (month, quarter, year)
+   */
+  async getMetrics(userId: string, period: string = 'month'): Promise<DashboardMetrics> {
+    try {
+      // Calculate date ranges based on the period
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (period) {
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1); // Jan 1st of current year
+          break;
+        case 'quarter':
+          const quarter = Math.floor(now.getMonth() / 3);
+          startDate = new Date(now.getFullYear(), quarter * 3, 1); // Start of current quarter
+          break;
+        case 'week':
+          const day = now.getDay();
+          const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Sunday
+          startDate = new Date(now.getFullYear(), now.getMonth(), diff); // Start of current week (Monday)
+          break;
+        case 'month':
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1); // Start of current month
+          break;
+      }
+      
+      // Format date for SQL query
+      const formattedStartDate = startDate.toISOString();
+      
+      // Get all transactions for the period with category information
+      const { data: transactions, error } = await this.supabaseService
+        .getClient()
+        .from(this.TABLE_NAME)
+        .select('*, categories(name)')
+        .eq('user_id', userId)
+        .gte('transaction_date', formattedStartDate)
+        .order('transaction_date');
+      
+      if (error) {
+        this.logger.error(`Error fetching transaction metrics: ${error.message}`);
+        throw new Error(`Failed to fetch transaction metrics: ${error.message}`);
+      }
+      
+      if (!transactions || transactions.length === 0) {
+        // Return empty metrics if no transactions
+        return {
+          categorySummary: [],
+          monthlyTrend: [],
+          avgTransaction: 0,
+          totalTransactions: 0,
+          mostActiveDay: '',
+        };
+      }
+      
+      // Calculate category summary
+      const categoryTotals: Record<string, { total: number; name: string }> = {};
+      let totalAmount = 0;
+      
+      transactions.forEach(tx => {
+        if (tx.type === TransactionType.EXPENSE) {
+          const catId = tx.category_id || 'uncategorized';
+          if (!categoryTotals[catId]) {
+            categoryTotals[catId] = { 
+              total: 0, 
+              name: tx.categories?.name || 'Sin categoría' 
+            };
+          }
+          categoryTotals[catId].total += Math.abs(tx.amount);
+          totalAmount += Math.abs(tx.amount);
+        }
+      });
+      
+      const categorySummary = Object.entries(categoryTotals).map(([category_id, data]) => ({
+        category_id,
+        category_name: data.name,
+        total: Math.round(data.total * 100) / 100,
+        percentage: totalAmount ? Math.round((data.total / totalAmount) * 1000) / 10 : 0,
+      })).sort((a, b) => b.total - a.total);
+      
+      // Calculate monthly trend
+      const monthlyData: Record<string, { income: number; expense: number }> = {};
+      
+      transactions.forEach(tx => {
+        const date = new Date(tx.transaction_date);
+        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (!monthlyData[month]) {
+          monthlyData[month] = { income: 0, expense: 0 };
+        }
+        
+        if (tx.type === TransactionType.INCOME) {
+          monthlyData[month].income += tx.amount;
+        } else if (tx.type === TransactionType.EXPENSE) {
+          monthlyData[month].expense += Math.abs(tx.amount);
+        }
+      });
+      
+      const monthlyTrend = Object.entries(monthlyData).map(([month, data]) => ({
+        month,
+        income: Math.round(data.income * 100) / 100,
+        expense: Math.round(data.expense * 100) / 100,
+      })).sort((a, b) => a.month.localeCompare(b.month));
+      
+      // Calculate average transaction amount
+      const avgTransaction = totalAmount / transactions.filter(tx => tx.type === TransactionType.EXPENSE).length;
+      
+      // Find most active day of week
+      const dayCount: Record<string, number> = {
+        'domingo': 0, 'lunes': 0, 'martes': 0, 'miércoles': 0, 'jueves': 0, 'viernes': 0, 'sábado': 0
+      };
+      
+      const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+      
+      transactions.forEach(tx => {
+        const date = new Date(tx.transaction_date);
+        const day = days[date.getDay()];
+        dayCount[day] += 1;
+      });
+      
+      let mostActiveDay = days[0];
+      let maxCount = 0;
+      
+      Object.entries(dayCount).forEach(([day, count]) => {
+        if (count > maxCount) {
+          mostActiveDay = day;
+          maxCount = count;
+        }
+      });
+      
+      return {
+        categorySummary,
+        monthlyTrend,
+        avgTransaction: Math.round(avgTransaction * 100) / 100,
+        totalTransactions: transactions.length,
+        mostActiveDay,
+      };
+    } catch (error) {
+      this.logger.error(`Error generating dashboard metrics: ${error.message}`);
+      throw error;
+    }
   }
 }
